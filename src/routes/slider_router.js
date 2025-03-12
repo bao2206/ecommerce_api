@@ -1,15 +1,12 @@
 var express = require('express');
 var router = express.Router();
 const MainController = require('../controllers/slider_controller'); 
-const {validateSlider, deleteSlider} = require("../validations/slider_validation");
+const {asyncHandle} = require("../utils/asyncHandle")
 
-// router.post("/update-ordering/:id", MainController.updateOrdering);
-// router.post("/update-status/:id", validateSlider,MainController.updateStatus);
-
-router.get('/:id', MainController.getSliderById);
-router.post('/', validateSlider ,MainController.createSlider);
-router.put('/:id', validateSlider,MainController.updateSlider);
-router.delete('/:id', deleteSlider,MainController.deleteSlider);
+router.get('/:id', asyncHandle(MainController.getSliderById));
+router.post('/' ,asyncHandle(MainController.createSlider));
+router.put('/:id', asyncHandle(MainController.updateSlider));
+router.delete('/:id', asyncHandle(MainController.deleteSlider));
 
 router.get("/", MainController.getAll);
 

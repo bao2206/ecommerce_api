@@ -29,7 +29,7 @@
 
 const mongoose = require('mongoose');
 
-const DB_URI = 'mongodb://localhost:27017/dev';
+const DB_URI = 'mongodb+srv://baopro2206:22062002giabao@cluster0.kkoleaf.mongodb.net/';
 const SliderModel = require('../models/slider_model');
 
 class Database {
@@ -44,10 +44,7 @@ class Database {
 
     async connect() {
         try {
-            await mongoose.connect(DB_URI, {
-                useNewUrlParser: true,
-                useUnifiedTopology: true
-            });
+            await mongoose.connect(DB_URI);
             console.log(`✅ Connected to MongoDB at ${DB_URI}`);
             // await this.seedData();
         } catch (error) {

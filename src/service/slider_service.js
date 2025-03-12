@@ -1,27 +1,61 @@
 const SliderModel = require('../models/slider_model');
+const { coverIdToObjectId }  = require('../utils/helper')
+const returnData = (status, value) => {
+    return {
+        success: status,
+        data: value 
+    }
+ }
 class SliderService {
     async getAll ({page, limit, name, status})  {
-        let query={};
-        if(name) query.name = name;
-        if(status !== "all") query.status = status;
-        const sliders = await SliderModel.find(query).skip((page - 1) * limit).limit(limit).sort({ordering: 1});
-        const total = await SliderModel.countDocuments(query); 
-        let totalPage = Math.ceil(total / limit);   
+        const query = {
+            ...(name && { name }),
+            ...(status !== "all" && { status })
+        };
+    
+        const [sliders, total] = await Promise.all([
+            SliderModel.find(query)
+                .skip((page - 1) * limit)
+                .limit(limit)
+                .sort({ ordering: 1 })
+                .select('-__v')
+                .lean(),  // Sử dụng lean() để trả về plain object, nhanh hơn document của mongoose
+            SliderModel.countDocuments(query)
+        ]);
+    
         return {
             data: sliders,
             total,
             page, 
-            totalPage: totalPage
+            totalPage: Math.ceil(total / limit),
+            success: true
         };
     }
-    async createSlider(data) {
-        try {
-            const newSlider = new SliderModel(data);
-            await newSlider.save();
-            return { success: true, data: newSlider };
-        } catch (error) {
-            return { success: false, message: error.message };
-        }
+    async createSlider({
+        name,
+        status,
+        ordering,
+        category_id,
+        imageUrl
+    }){
+        let newSlider = await SliderModel.create({
+            name,
+            status,
+            ordering,
+            category_id,
+            imageUrl
+        });
+        // return {
+        //     success: true,
+        //     data: newSlider
+        // }
+        returnData(true, newSlider);
+    }
+    async checkNameExist(name){
+        return await SliderModel.findOne({name});  
+    }
+    async checkNameExitNotId(id, name){
+        return await SliderModel.findOne({name, _id: {$ne: coverIdToObjectId(id)}});
     }
     async updateSlider(id, data) {
         try {
@@ -36,20 +70,15 @@ class SliderService {
             return { success: false, message: error.message };
         }
     }
-    async findById(id){
-        const slider = await SliderModel.findById(id);
-        if (!slider) {
-            return { success: false, message: "Không tìm thấy slider" };
-        }
-        return {success: true, message: "Tìm slider thành công" };
+    async findSliderById(id){
+        return await SliderModel.findById(id);
     }
     async findByIdAndDelete(id){
-        const slider = await SliderModel.findById(id);
-        if (!slider) {
-            return { success: false, message: "Không tìm thấy slider" };
-        }
         await SliderModel.findByIdAndDelete(id);
-        return {success: true, message: "Xoá slider thành công" };
+        return {
+            success: true,
+            data: 1
+        };
     }
 }
 
