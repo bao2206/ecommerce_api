@@ -96,4 +96,5 @@ accountSchema.methods.generateToken = function(){
     throw new ErrorCustom("Error during generate token", 500);
   }
 }
+
 module.exports = mongoose.model(ModelDocument, accountSchema);

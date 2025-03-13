@@ -27,10 +27,10 @@ class AccountService {
   checkUserByUsername = async ({ username }) => {
     return await MainModel.findOne({ username });
   };
-  checkPhoneExist = async ({phone}) => {
-    return await MainModel.findOne({ phone })
-;}
-  getUserByEmailOrUsername = async ({ emailOrUsername }) => {
+  checkPhoneExist = async ({ phone }) => {
+    return await MainModel.findOne({ phone });
+  };
+  checkUserByEmailOrUsername = async ({ emailOrUsername }) => {
     const user = await MainModel.findOne({
       $or: [{ email: emailOrUsername }, { username: emailOrUsername }],
     });
@@ -42,9 +42,12 @@ class AccountService {
   getAllRoles = () => {
     return MainModel.schema.path("role").enumValues;
   };
-  getEleById = async (id) =>{
+  getEleById = async (id) => {
     const user_id = await MainModel.findById(id);
     return user_id;
+  };
+  getUserById = async(id) => {
+    return await MainModel.findById(id).select("-password, -role");
   }
 }
 module.exports = new AccountService();

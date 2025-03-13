@@ -3,20 +3,20 @@ const jwt = require('jsonwebtoken');
 // const fs = require("fs");
 // const path = require("path");
 
-class UserControlller {
-//   Logout = async(req, res, next) =>{
+class UserController {
+  // Logout = async(req, res, next) =>{
    
-//     //logout cookie 
-//     try {
-//       // Clear the cookie that stores the user's session
-//       removeCookie(res, "user");
-//       return res.status(200).json({ success: true, message: "Logged out successfully." });
-//     } catch (error) {
-//       console.log("Catch")
-//       console.error("Error during logout:", error);
-//       return res.status(500).json({ success: false, message: "Error server, please try again." });
-//     }
-//   }
+  //   //logout cookie 
+  //   try {
+  //     // Clear the cookie that stores the user's session
+  //     removeCookie(res, "user");
+  //     return res.status(200).json({ success: true, message: "Logged out successfully." });
+  //   } catch (error) {
+  //     console.log("Catch")
+  //     console.error("Error during logout:", error);
+  //     return res.status(500).json({ success: false, message: "Error server, please try again." });
+  //   }
+  // }
  
   SignUp = async(req, res, next) =>{
 
@@ -28,73 +28,64 @@ class UserControlller {
         MainService.checkPhoneExist({phone})
       ]);
       
-      const [existingUserEmail, existingUsername, exisitingPhone] = existingUser;
+      const [existingUserEmail, existingUsername, existingPhone] = existingUser;
 
       if(existingUserEmail) throw new Error("Email already in use.");
       if(existingUsername) throw new Error("Username already in use.");
-      if (exisitingPhone) throw new Error("Phone already in use.");
+      if (existingPhone) throw new Error("Phone already in use.");
 
       const newUser = await MainService.createAccount(username, email, password, phone);
 
-      // Trả về kết quả
-      if (newUser) {
-      
-        return res.status(201).json({message: "Successful.", data: newUser}); 
-      } else {
-        throw new Error("Cannot create a new user")
-      }
-   
+      if(!newUser) throw new Error("Cannot create a new account.");
+
+      // const token = newUser.generateToken();
+      console.log("check")
+      return res.status(201).json({
+        message: "Successful.",
+        data: {
+          user: {
+            id: newUser._id,
+            username: newUser.username,
+            email: newUser.email,
+            phone: newUser.phone
+          },
+          // token
+        }
+      });
   }
   SignIn = async(req, res, next) => {
-  const validator = new Validator(req.body);
-  
-  const isValid = validator.validateLogin();
- 
-  try {
-    if (!isValid) {
-      return res.status(400).json({ success: false, message: "Please provide valid email or username and password." });
-    }
-    // Tìm người dùng theo email hoặc username
-    const { emailOrUsername, password } = req.body;
-    const existingUser = await MainService.getUserByEmailOrUsername({ emailOrUsername });
+    const {emailOrUsername, password} = req.body;
+    const user = await MainService.checkUserByEmailOrUsername({emailOrUsername});
+    if(!user) throw new Error("User not found.");
 
-
-    if (!existingUser) {
-      return res.status(400).json({ success: false, message: "User not found." });
-    }
-
-    // So sánh mật khẩu đã nhập với mật khẩu trong cơ sở dữ liệu
-    const isPasswordMatch = await existingUser.comparePassword(password);
-
-    if (!isPasswordMatch) {
-      return res.status(400).json({ success: false, message: "Incorrect password." });
-    }
-    const roleOfUser = MainService.getRoleOfUser(existingUser);
-   
-    console.log(roleOfUser);
-    // 
-    res.cookie('user', JSON.stringify({
-      username: existingUser.username,
-      email: existingUser.email,
-      role: roleOfUser
-    }), {
-      httpOnly: true,  
-      secure: false,   
-      maxAge: 3600000, 
-      sameSite: 'strict' 
+    const isMatch = await user.comparePassword(password);
+    if(!isMatch) throw new Error("Invalid password.");
+    const token = jwt.sign(
+      {id: user._id, email: user.email, role: user.role},
+      process.env.JWT_SECRET,
+      {expiresIn: process.env.JWT_EXPIRES_IN}
+    );
+    return res.status(200).json({
+      message: "Login successful.",
+      token,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      },
     });
-   
-    return res.status(201).json({ success: true, message: "Login successful.", user: existingUser });
-    // return res.redirect("/");
-  } catch (error) {
-    console.error("Error during login:", error);
-    if (!res.headersSent) {
-      return res.status(500).json({ success: false, message: "Server error, please try again." });
-    }
   }
+  getProfile = async(req, res, next) => {
+    const userId = req.user.id;
+    const user = await MainService.getUserById(userId);
+    if(!user) throw new Error("User not found.");
+    return res.status(200).json({"Get user successfully": user});
   }
+  updateProfile = async(req, res, next) => {
+    
+  }
+
 }
-function removeCookie(res, cookieName) {
-  res.cookie(cookieName, "", { expires: new Date(0), path: '/' });
-}
-module.exports = new UserControlller();
+
+module.exports = new UserController();
