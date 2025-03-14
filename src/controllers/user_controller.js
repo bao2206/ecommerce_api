@@ -2,21 +2,25 @@ const MainService = require("../service/user_service");
 const jwt = require('jsonwebtoken');
 // const fs = require("fs");
 // const path = require("path");
+const redis = require("../utils/redis");
 
 class UserController {
-  // Logout = async(req, res, next) =>{
-   
-  //   //logout cookie 
-  //   try {
-  //     // Clear the cookie that stores the user's session
-  //     removeCookie(res, "user");
-  //     return res.status(200).json({ success: true, message: "Logged out successfully." });
-  //   } catch (error) {
-  //     console.log("Catch")
-  //     console.error("Error during logout:", error);
-  //     return res.status(500).json({ success: false, message: "Error server, please try again." });
-  //   }
-  // }
+  Logout = async(req, res, next) =>{
+    const token = req.header("Authorization")?.replace("Bearer ", "");
+    if(!token) throw new Error("Token is required.");
+
+
+    const decoded = jwt.decode(token);
+    const exp = decoded?.exp;
+
+    if(!exp) throw new Error("Invalid token.");
+
+    const ttl = exp - Math.floor(Date.now() / 1000);
+    if (ttl > 0) {
+      await redis.setex(`blacklist:${token}`, ttl, "blacklisted"); 
+    }
+    return res.status(200).json({ message: "Logout successful" });
+  }
  
   SignUp = async(req, res, next) =>{
 
@@ -56,6 +60,7 @@ class UserController {
   SignIn = async(req, res, next) => {
     const {emailOrUsername, password} = req.body;
     const user = await MainService.checkUserByEmailOrUsername({emailOrUsername});
+    console.log(user);
     if(!user) throw new Error("User not found.");
 
     const isMatch = await user.comparePassword(password);
@@ -83,9 +88,26 @@ class UserController {
     return res.status(200).json({"Get user successfully": user});
   }
   updateProfile = async(req, res, next) => {
-    
-  }
+    const userId = req.user.id;
+    const updatedData = req.body;
 
+    const updatedUser = await MainService.updateUserById(userId, updatedData);
+
+    if(!updatedUser) throw new Error("Cannot update user.");
+    return res.status(200).json({"Update user successfully": updatedUser});
+  }
+  changePassword = async(req, res, next) => {
+    const userId = req.user.id;
+    const {oldPassword, newPassword} = req.body;
+    const user = await MainService.findUserById(userId);
+    console.log(user);
+    if(!user) throw new Error("User not found.");
+    const isMatch = await user.comparePassword(oldPassword);
+    if(!isMatch) throw new Error("Invalid password.");
+    user.password = newPassword;
+    await user.save();
+    return res.status(200).json({"Change password successfully": user});
+  } 
 }
 
 module.exports = new UserController();

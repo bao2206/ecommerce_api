@@ -1,5 +1,5 @@
 const MainModel = require("../models/user_model");
-
+const _ = require("lodash");
 class AccountService {
   getAllItems = async (filter) => {
     return await MainModel.find(filter);
@@ -42,12 +42,22 @@ class AccountService {
   getAllRoles = () => {
     return MainModel.schema.path("role").enumValues;
   };
-  getEleById = async (id) => {
-    const user_id = await MainModel.findById(id);
-    return user_id;
+
+  getUserById = async (id) => {
+    return await MainModel.findById(id).select(
+      "-password -role -status -is_active"
+    );
   };
-  getUserById = async(id) => {
-    return await MainModel.findById(id).select("-password, -role");
+
+  findUserById = async(id) =>{
+    return await MainModel.findById(id);
   }
+  updateUserById = async (id, data) => {
+    const allowedUpdates = _.omit(data, ["username ", "password", "role", "status", "is_active"]);
+    return await MainModel.findByIdAndUpdate(id, 
+      { $set: allowedUpdates }, 
+      { new: true, runValidators: true }
+    ).select("-username -password -role -status -is_active");  
+  };
 }
 module.exports = new AccountService();
